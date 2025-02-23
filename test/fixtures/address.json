@@ -1,0 +1,42 @@
+{
+  "standard": [
+    {
+      "network": "evrmore",
+      "version": 33,
+      "hash": "0cb0f8b8f8dc081fffc6e83623e58707da613cef",
+      "base58check": "EJK1c5yXvQm43ykZqsTmuyoc7hP1a9rc2N",
+      "script": "OP_DUP OP_HASH160 0cb0f8b8f8dc081fffc6e83623e58707da613cef OP_EQUALVERIFY OP_CHECKSIG"
+    },
+    {
+      "network": "evrmore",
+      "version": 33,
+      "hash": "89adbf2fde216164fc4dec253ccc6b5b756213ca",
+      "base58check": "EVhtD1JGd7C6SKtXNPwwtg31S9eQne8cXA",
+      "script": "OP_DUP OP_HASH160 89adbf2fde216164fc4dec253ccc6b5b756213ca OP_EQUALVERIFY OP_CHECKSIG"
+    },
+    {
+      "network": "evrmore",
+      "version": 33,
+      "hash": "213b2dc9899b2bbb92d341a69010026c9b6a8496",
+      "base58check": "ELBcgjWDFQGTMxotB8FRXBdkBccJCGiKmT",
+      "script": "OP_DUP OP_HASH160 213b2dc9899b2bbb92d341a69010026c9b6a8496 OP_EQUALVERIFY OP_CHECKSIG"
+    }
+  ],
+  "scripthash": [
+    {
+      "network": "evrmore",
+      "version": 92,
+      "hash": "a78f72cdb3a7ee5f09d5259ae7eb64231858bdc2",
+      "base58check": "eHNUGzw8ZG9PGC8gKtnneyMaQXQTtAUm98",
+      "script": "OP_HASH160 a78f72cdb3a7ee5f09d5259ae7eb64231858bdc2 OP_EQUAL"
+    }
+  ],
+  "invalid": {
+    "fromBase58Check": [
+      {
+        "address": "E1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0",
+        "exception": "Non-base58 character"
+      }
+    ]
+  }
+}
