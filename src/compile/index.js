@@ -1,11 +1,17 @@
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-exports.selectUtxos = exports.createTx = void 0;
+exports.selectUtxos = exports.signTx = exports.createUnsignedTx = void 0;
 var transaction_1 = require('./transaction');
-Object.defineProperty(exports, 'createTx', {
+Object.defineProperty(exports, 'createUnsignedTx', {
   enumerable: true,
   get: function() {
-    return transaction_1.createTx;
+    return transaction_1.createUnsignedTx;
+  },
+});
+Object.defineProperty(exports, 'signTx', {
+  enumerable: true,
+  get: function() {
+    return transaction_1.signTx;
   },
 });
 Object.defineProperty(exports, 'selectUtxos', {

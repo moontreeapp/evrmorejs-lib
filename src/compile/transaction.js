@@ -1,6 +1,6 @@
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-exports.createTx = exports.selectUtxos = void 0;
+exports.signTx = exports.createUnsignedTx = exports.selectUtxos = void 0;
 const __1 = require('..');
 const psbt_1 = require('../psbt');
 const selectUtxos = (utxos, senders, dustThreshold = 546) => {
@@ -70,7 +70,7 @@ const selectUtxos = (utxos, senders, dustThreshold = 546) => {
   return selectedUtxos;
 };
 exports.selectUtxos = selectUtxos;
-const createTx = (keypair, utxos, senders, changeAddress, feeRate) => {
+const createUnsignedTx = (utxos, senders, changeAddress, feeRate) => {
   const psbt = new psbt_1.Psbt({ network: __1.networks.evrmore });
   psbt.version = 1;
   psbt.locktime = 0;
@@ -117,6 +117,11 @@ const createTx = (keypair, utxos, senders, changeAddress, feeRate) => {
       });
     }
   });
+  return psbt.toHex();
+};
+exports.createUnsignedTx = createUnsignedTx;
+const signTx = (unsignedTx, utxos, keypair) => {
+  const psbt = psbt_1.Psbt.fromHex(unsignedTx);
   utxos.forEach((_, index) => {
     try {
       psbt.signInput(index, keypair);
@@ -132,4 +137,4 @@ const createTx = (keypair, utxos, senders, changeAddress, feeRate) => {
   const tx = psbt.extractTransaction();
   return tx.toHex();
 };
-exports.createTx = createTx;
+exports.signTx = signTx;

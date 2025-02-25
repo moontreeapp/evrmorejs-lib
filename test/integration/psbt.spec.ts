@@ -1,4 +1,4 @@
-import { createTx, networks, payments, selectUtxos } from 'evrmorejs-lib';
+import { createUnsignedTx, signTx, networks, payments, selectUtxos } from 'evrmorejs-lib';
 import ECPairFactory from 'ecpair';
 import * as ecc from 'tiny-secp256k1';
 
@@ -247,14 +247,15 @@ function createTransaction() {
   ];
   const changeAddress = 'EQ2dsWBZAJCUJsNTFm1aDY4BQHXTmFRGK5';
   const feeRate = 2000;
-  const txHexByFunction = createTx(
-    keyPair,
+  const unsignedTx = createUnsignedTx(
     utxos,
     recepients,
     changeAddress,
     feeRate,
   );
-  console.log('Tx Hex by function:', txHexByFunction);
+  console.log('Unsigned Tx Hex:', unsignedTx);
+  const signedTxHex = signTx(unsignedTx, utxos, keyPair);
+  console.log('Signed Tx Hex:', signedTxHex);
 }
 
 createTransaction();

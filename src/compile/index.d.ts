@@ -1,1 +1,1 @@
-export { createTx, selectUtxos } from './transaction';
+export { createUnsignedTx, signTx, selectUtxos } from './transaction';

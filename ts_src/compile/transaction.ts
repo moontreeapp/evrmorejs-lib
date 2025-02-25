@@ -111,8 +111,7 @@ export const selectUtxos = (
   return selectedUtxos;
 };
 
-export const createTx = (
-  keypair: Signer,
+export const createUnsignedTx = (
   utxos: UtxoType[],
   senders: ReceipientType[],
   changeAddress: string,
@@ -173,6 +172,15 @@ export const createTx = (
     }
   });
 
+  return psbt.toHex();
+};
+
+export const signTx = (
+  unsignedTx: string,
+  utxos: UtxoType[],
+  keypair: Signer,
+): string => {
+  const psbt = Psbt.fromHex(unsignedTx);
   utxos.forEach((_, index) => {
     try {
       psbt.signInput(index, keypair);
@@ -188,6 +196,5 @@ export const createTx = (
   }
 
   const tx = psbt.extractTransaction();
-
   return tx.toHex();
 };

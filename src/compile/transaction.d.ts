@@ -24,4 +24,5 @@ export declare const selectUtxos: (utxos: FetchedUtxoType[], senders: Receipient
     vout: number;
     value: number;
 }[];
-export declare const createTx: (keypair: Signer, utxos: UtxoType[], senders: ReceipientType[], changeAddress: string, feeRate: number) => string;
+export declare const createUnsignedTx: (utxos: UtxoType[], senders: ReceipientType[], changeAddress: string, feeRate: number) => string;
+export declare const signTx: (unsignedTx: string, utxos: UtxoType[], keypair: Signer) => string;
