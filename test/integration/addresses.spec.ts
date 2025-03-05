@@ -13,8 +13,18 @@ describe('evrmorejs-lib (addresses)', () => {
       const { address } = evrmore.payments.p2pkh({
         pubkey: keyPair.publicKey,
       });
+      const pubkeys = [keyPair.publicKey, keyPair.publicKey, keyPair.publicKey];
+
+      const redeemScript = evrmore.multisigRedeemScript(2, pubkeys);
+      console.log(redeemScript.toString('hex'));
+      const { address: p2shAddress } = evrmore.payments.p2sh({
+        hash: evrmore.crypto.hash160(redeemScript),
+      });
+      console.log(p2shAddress);
       // evrmore P2PKH addresses start with a 'E'
       assert.strictEqual(address!.startsWith('E'), true);
+      // evrmore P2SH addresses start with a 'e'
+      assert.strictEqual(p2shAddress!.startsWith('e'), true);
     } catch (e) {
       console.log(e);
       throw e;

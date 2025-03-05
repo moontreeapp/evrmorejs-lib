@@ -12,4 +12,5 @@ export { Transaction } from './transaction';
 export { Network } from './networks';
 export { Payment, PaymentCreator, PaymentOpts, Stack, StackElement, } from './payments';
 export { Input as TxInput, Output as TxOutput } from './transaction';
-export { createUnsignedTx, signTx, selectUtxos } from './compile';
+export { createUnsignedTx, selectUtxos, signPsbt, finalizePsbt, } from './compile';
+export { multisigRedeemScript } from './compile/redeemScript';

@@ -30,4 +30,10 @@ export {
 } from './payments';
 export { Input as TxInput, Output as TxOutput } from './transaction';
 
-export { createUnsignedTx, signTx, selectUtxos } from './compile';
+export {
+  createUnsignedTx,
+  selectUtxos,
+  signPsbt,
+  finalizePsbt,
+} from './compile';
+export { multisigRedeemScript } from './compile/redeemScript';

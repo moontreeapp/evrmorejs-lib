@@ -992,6 +992,14 @@ function getHashForSig(inputIndex, input, cache, forValidate, sighashTypes) {
       prevout.value,
       sighashType,
     );
+  } else if (type === 'p2sh') {
+    const redeemScript = input.redeemScript;
+    if (!redeemScript) {
+      throw new Error(
+        `Input #${inputIndex} has p2sh script but no redeemScript`,
+      );
+    }
+    hash = unsignedTx.hashForSignature(inputIndex, redeemScript, sighashType);
   } else {
     // non-segwit
     if (
@@ -1405,8 +1413,8 @@ function pubkeyInScript(pubkey, script) {
 }
 function classifyScript(script) {
   if (isP2WPKH(script)) return 'witnesspubkeyhash';
-  if (isP2PKH(script)) return 'pubkeyhash';
   if (isP2MS(script)) return 'multisig';
+  if (isP2PKH(script)) return 'pubkeyhash';
   if (isP2PK(script)) return 'pubkey';
   return 'nonstandard';
 }

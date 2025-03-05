@@ -1,1 +1,7 @@
-export { createUnsignedTx, signTx, selectUtxos } from './transaction';
+export {
+  createUnsignedTx,
+  selectUtxos,
+  signPsbt,
+  finalizePsbt,
+} from './transaction';
+export { multisigRedeemScript } from './redeemScript';

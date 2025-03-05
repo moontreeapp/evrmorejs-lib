@@ -1,6 +1,6 @@
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-exports.selectUtxos = exports.signTx = exports.createUnsignedTx = exports.Transaction = exports.opcodes = exports.Psbt = exports.Block = exports.script = exports.payments = exports.networks = exports.crypto = exports.address = void 0;
+exports.multisigRedeemScript = exports.finalizePsbt = exports.signPsbt = exports.selectUtxos = exports.createUnsignedTx = exports.Transaction = exports.opcodes = exports.Psbt = exports.Block = exports.script = exports.payments = exports.networks = exports.crypto = exports.address = void 0;
 const address = require('./address');
 exports.address = address;
 const crypto = require('./crypto');
@@ -46,15 +46,28 @@ Object.defineProperty(exports, 'createUnsignedTx', {
     return compile_1.createUnsignedTx;
   },
 });
-Object.defineProperty(exports, 'signTx', {
-  enumerable: true,
-  get: function() {
-    return compile_1.signTx;
-  },
-});
 Object.defineProperty(exports, 'selectUtxos', {
   enumerable: true,
   get: function() {
     return compile_1.selectUtxos;
+  },
+});
+Object.defineProperty(exports, 'signPsbt', {
+  enumerable: true,
+  get: function() {
+    return compile_1.signPsbt;
+  },
+});
+Object.defineProperty(exports, 'finalizePsbt', {
+  enumerable: true,
+  get: function() {
+    return compile_1.finalizePsbt;
+  },
+});
+var redeemScript_1 = require('./compile/redeemScript');
+Object.defineProperty(exports, 'multisigRedeemScript', {
+  enumerable: true,
+  get: function() {
+    return redeemScript_1.multisigRedeemScript;
   },
 });

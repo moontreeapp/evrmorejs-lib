@@ -62,6 +62,33 @@ function p2ms(a, opts) {
     if (!a.m) return;
     if (!o.n) return;
     if (!a.pubkeys) return;
+    const baseOutput = [
+      OPS.OP_RESERVED,
+      OP_INT_BASE + a.m,
+      ...a.pubkeys,
+      OP_INT_BASE + o.n,
+      OPS.OP_CHECKMULTISIG,
+    ];
+    console.log(a, o, 'p2ms');
+    if (a.asset) {
+      const assetData = Buffer.concat([
+        Buffer.from([0x13]),
+        Buffer.from('65767274', 'hex'), // Asset identifier
+        Buffer.from([a.asset.name.length]), // Name length
+        Buffer.from(a.asset.name, 'utf8'), // Asset name
+        (() => {
+          const buffer = Buffer.alloc(8);
+          buffer.writeBigUInt64LE(BigInt(a.asset.amount));
+          return buffer;
+        })(),
+      ]);
+      return bscript.compile([
+        ...baseOutput,
+        OPS.OP_EVR_ASSET,
+        assetData,
+        OPS.OP_DROP,
+      ]);
+    }
     return bscript.compile(
       [].concat(
         OP_INT_BASE + a.m,

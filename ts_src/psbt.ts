@@ -365,7 +365,6 @@ export class Psbt {
       isP2SH,
       isP2WSH,
     );
-
     if (finalScriptSig) this.data.updateInput(inputIndex, { finalScriptSig });
     if (finalScriptWitness)
       this.data.updateInput(inputIndex, { finalScriptWitness });
@@ -1197,7 +1196,6 @@ function prepareFinalScripts(
   const payment: payments.Payment = getPayment(script, scriptType, partialSig);
   const p2wsh = !isP2WSH ? null : payments.p2wsh({ redeem: payment });
   const p2sh = !isP2SH ? null : payments.p2sh({ redeem: p2wsh || payment });
-
   if (isSegwit) {
     if (p2wsh) {
       finalScriptWitness = witnessStackToScriptWitness(p2wsh.witness!);
@@ -1300,7 +1298,6 @@ function getHashForSig(
     input.redeemScript,
     input.witnessScript,
   );
-
   if (['p2sh-p2wsh', 'p2wsh'].indexOf(type) >= 0) {
     hash = unsignedTx.hashForWitnessV0(
       inputIndex,
@@ -1318,6 +1315,14 @@ function getHashForSig(
       prevout.value,
       sighashType,
     );
+  } else if (type === 'p2sh') {
+    const redeemScript = input.redeemScript;
+    if (!redeemScript) {
+      throw new Error(
+        `Input #${inputIndex} has p2sh script but no redeemScript`,
+      );
+    }
+    hash = unsignedTx.hashForSignature(inputIndex, redeemScript, sighashType);
   } else {
     // non-segwit
     if (
@@ -1855,8 +1860,8 @@ type ScriptType =
   | 'nonstandard';
 function classifyScript(script: Buffer): ScriptType {
   if (isP2WPKH(script)) return 'witnesspubkeyhash';
-  if (isP2PKH(script)) return 'pubkeyhash';
   if (isP2MS(script)) return 'multisig';
+  if (isP2PKH(script)) return 'pubkeyhash';
   if (isP2PK(script)) return 'pubkey';
   return 'nonstandard';
 }

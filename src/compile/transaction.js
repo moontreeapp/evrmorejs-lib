@@ -1,8 +1,16 @@
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
-exports.signTx = exports.createUnsignedTx = exports.selectUtxos = void 0;
+exports.finalizePsbt = exports.signPsbt = exports.createUnsignedTx = exports.selectUtxos = void 0;
 const __1 = require('..');
 const psbt_1 = require('../psbt');
+/**
+ * This function selects the UTXOs to be used for the transaction
+ * @param utxos This is an array of UTXOs
+ * @param senders This is an array of senders
+ * @param dustThreshold This is the dust threshold
+ * @returns This returns an array of UTXOs
+ * UTXOs are selected based on the amount of assets and the amount of senders
+ */
 const selectUtxos = (utxos, senders, dustThreshold = 546) => {
   if (!utxos || utxos.length === 0) {
     throw new Error('No UTXOs found');
@@ -70,7 +78,15 @@ const selectUtxos = (utxos, senders, dustThreshold = 546) => {
   return selectedUtxos;
 };
 exports.selectUtxos = selectUtxos;
-const createUnsignedTx = (utxos, senders, changeAddress, feeRate) => {
+/**
+ * This function creates an unsigned transaction
+ * @param utxos This is an array of UTXOs
+ * @param senders This is an array of senders
+ * @param changeAddress This is the address of the change
+ * @param feeRate This is the fee rate
+ * @returns This returns an unsigned transaction
+ */
+const createUnsignedTx = (utxos, senders, changeAddress, feeRate = 2000) => {
   const psbt = new psbt_1.Psbt({ network: __1.networks.evrmore });
   psbt.version = 1;
   psbt.locktime = 0;
@@ -120,21 +136,46 @@ const createUnsignedTx = (utxos, senders, changeAddress, feeRate) => {
   return psbt.toHex();
 };
 exports.createUnsignedTx = createUnsignedTx;
-const signTx = (unsignedTx, utxos, keypair) => {
+/**
+ * This function signs a PSBT
+ * @param psbtBase64 This is the PSBT in base64 format
+ * @param keyPair This is the keypair to sign the PSBT
+ * @returns This returns a signed PSBT in base64 format
+ */
+const signPsbt = (unsignedTx, keyPair, redeemScript, witnessScript) => {
   const psbt = psbt_1.Psbt.fromHex(unsignedTx);
-  utxos.forEach((_, index) => {
+  const inputCount = psbt.inputCount;
+  for (let i = 0; i < inputCount; i++) {
     try {
-      psbt.signInput(index, keypair);
+      if (redeemScript) {
+        psbt.updateInput(i, { redeemScript });
+      }
+      if (witnessScript) {
+        psbt.updateInput(i, { witnessScript });
+      }
+      psbt.signInput(i, keyPair);
     } catch (error) {
-      console.error(`Error signing input ${index}:`, error);
+      console.error(`Error signing input ${i}:`, error);
     }
-  });
-  try {
-    psbt.finalizeAllInputs();
-  } catch (error) {
-    console.error('Error finalizing inputs:', error);
   }
-  const tx = psbt.extractTransaction();
-  return tx.toHex();
+  return psbt.toBase64();
 };
-exports.signTx = signTx;
+exports.signPsbt = signPsbt;
+/**
+ * This function merges two PSBTs
+ * @param psbtArray This is an array of PSBTs
+ * @returns This returns a merged PSBT
+ */
+const finalizePsbt = psbtArray => {
+  const psbt1Obj = psbt_1.Psbt.fromBase64(psbtArray[0]);
+  if (psbtArray.length > 1) {
+    for (let i = 1; i < psbtArray.length; i++) {
+      const psbt2Obj = psbt_1.Psbt.fromBase64(psbtArray[i]);
+      psbt1Obj.combine(psbt2Obj);
+    }
+  }
+  psbt1Obj.finalizeAllInputs();
+  const signedTx = psbt1Obj.extractTransaction().toHex();
+  return signedTx;
+};
+exports.finalizePsbt = finalizePsbt;
