@@ -32,9 +32,9 @@ function chunkHasUncompressedPubkey(chunk: StackElement): boolean {
 
 // input: <>
 // witness: [redeemScriptSig ...] {redeemScript}
-// output: OP_0 {sha256(redeemScript)}
+// output: OP_0 {sha256(redeemScript)} [OP_EVR_ASSET {asset metadata}]
 export function p2wsh(a: Payment, opts?: PaymentOpts): Payment {
-  if (!a.address && !a.hash && !a.output && !a.redeem && !a.witness)
+  if (!a.address && !a.hash && !a.output && !a.redeem && !a.witness && !a.asset)
     throw new TypeError('Not enough data');
   opts = Object.assign({ validate: true }, opts || {});
 
@@ -54,6 +54,7 @@ export function p2wsh(a: Payment, opts?: PaymentOpts): Payment {
       }),
       input: typef.maybe(typef.BufferN(0)),
       witness: typef.maybe(typef.arrayOf(typef.Buffer)),
+      asset: typef.maybe(typef.Object),
     },
     a,
   );
@@ -92,6 +93,21 @@ export function p2wsh(a: Payment, opts?: PaymentOpts): Payment {
   });
   lazy.prop(o, 'output', () => {
     if (!o.hash) return;
+    const baseOutput = [OPS.OP_0, o.hash];
+    if (a.asset) {
+      const assetData = Buffer.concat([
+        Buffer.from([0x13]),
+        Buffer.from('65767274', 'hex'),
+        Buffer.from([a.asset.name.length]),
+        Buffer.from(a.asset.name, 'utf8'),
+        (() => {
+          const buffer = Buffer.alloc(8);
+          buffer.writeBigUInt64LE(BigInt(a.asset.amount));
+          return buffer;
+        })(),
+      ]);
+      return bscript.compile([...baseOutput, OPS.OP_EVR_ASSET, assetData]);
+    }
     return bscript.compile([OPS.OP_0, o.hash]);
   });
   lazy.prop(o, 'redeem', () => {
@@ -135,7 +151,6 @@ export function p2wsh(a: Payment, opts?: PaymentOpts): Payment {
     return nameParts.join('-');
   });
 
-  // extended validation
   if (opts.validate) {
     let hash: Buffer = Buffer.from([]);
     if (a.address) {

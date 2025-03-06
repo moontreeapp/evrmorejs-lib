@@ -20,6 +20,7 @@ import { evrmore as evrmoreNetwork, Network } from './networks';
 import * as payments from './payments';
 import * as bscript from './script';
 import { Output, Transaction } from './transaction';
+import { OPS } from './script';
 
 export interface TransactionInput {
   hash: string | Buffer;
@@ -365,6 +366,7 @@ export class Psbt {
       isP2SH,
       isP2WSH,
     );
+
     if (finalScriptSig) this.data.updateInput(inputIndex, { finalScriptSig });
     if (finalScriptWitness)
       this.data.updateInput(inputIndex, { finalScriptWitness });
@@ -1099,13 +1101,29 @@ function scriptCheckerFactory(
       redeem: { output: redeemScript },
     }).output as Buffer;
 
-    if (!scriptPubKey.equals(redeemScriptOutput)) {
-      throw new Error(
-        `${paymentScriptName} for ${ioType} #${inputIndex} doesn't match the scriptPubKey in the prevout`,
+    const assetDataIndex = scriptPubKey.indexOf(OPS.OP_EVR_ASSET);
+    if (assetDataIndex !== -1) {
+      const baseScriptPubKey = scriptPubKey.slice(0, assetDataIndex);
+      const baseRedeemScriptOutput = redeemScriptOutput.slice(
+        0,
+        assetDataIndex,
       );
+
+      if (!baseScriptPubKey.equals(baseRedeemScriptOutput)) {
+        throw new Error(
+          `${paymentScriptName} for ${ioType} #${inputIndex} doesn't match the scriptPubKey in the prevout`,
+        );
+      }
+    } else {
+      if (!scriptPubKey.equals(redeemScriptOutput)) {
+        throw new Error(
+          `${paymentScriptName} for ${ioType} #${inputIndex} doesn't match the scriptPubKey in the prevout`,
+        );
+      }
     }
   };
 }
+
 const checkRedeemScript = scriptCheckerFactory(payments.p2sh, 'Redeem script');
 const checkWitnessScript = scriptCheckerFactory(
   payments.p2wsh,
@@ -1196,6 +1214,7 @@ function prepareFinalScripts(
   const payment: payments.Payment = getPayment(script, scriptType, partialSig);
   const p2wsh = !isP2WSH ? null : payments.p2wsh({ redeem: payment });
   const p2sh = !isP2SH ? null : payments.p2sh({ redeem: p2wsh || payment });
+
   if (isSegwit) {
     if (p2wsh) {
       finalScriptWitness = witnessStackToScriptWitness(p2wsh.witness!);

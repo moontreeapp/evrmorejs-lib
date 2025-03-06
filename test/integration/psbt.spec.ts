@@ -24,7 +24,7 @@ console.log('Address from WIF:', address);
 function createTransaction() {
   const recepients = [
     {
-      address: 'EMgpUQ8ucUSnZnrpYvD2n7na48LfSbZHti',
+      address: 'eEY5brnAULc9wnr2Evfr31rdUHpoZbn1Uq',
       amount: 2000000,
       asset: 'SATORI',
     },

@@ -8,7 +8,14 @@ const OPS = bscript.OPS;
 // input: {signature}
 // output: {pubKey} OP_CHECKSIG
 export function p2pk(a: Payment, opts?: PaymentOpts): Payment {
-  if (!a.input && !a.output && !a.pubkey && !a.input && !a.signature)
+  if (
+    !a.input &&
+    !a.output &&
+    !a.pubkey &&
+    !a.input &&
+    !a.signature &&
+    !a.asset
+  )
     throw new TypeError('Not enough data');
   opts = Object.assign({ validate: true }, opts || {});
 
@@ -20,6 +27,7 @@ export function p2pk(a: Payment, opts?: PaymentOpts): Payment {
 
       signature: typef.maybe(bscript.isCanonicalScriptSignature),
       input: typef.maybe(typef.Buffer),
+      asset: typef.maybe(typef.Object),
     },
     a,
   );
@@ -33,7 +41,22 @@ export function p2pk(a: Payment, opts?: PaymentOpts): Payment {
 
   lazy.prop(o, 'output', () => {
     if (!a.pubkey) return;
-    return bscript.compile([a.pubkey, OPS.OP_CHECKSIG]);
+    const baseOutput = [a.pubkey, OPS.OP_CHECKSIG];
+    if (a.asset) {
+      const assetData = Buffer.concat([
+        Buffer.from([0x13]),
+        Buffer.from('65767274', 'hex'), // Asset identifier
+        Buffer.from([a.asset.name.length]), // Name length
+        Buffer.from(a.asset.name, 'utf8'), // Asset name
+        (() => {
+          const buffer = Buffer.alloc(8);
+          buffer.writeBigUInt64LE(BigInt(a.asset.amount));
+          return buffer;
+        })(),
+      ]);
+      return bscript.compile([...baseOutput, OPS.OP_EVR_ASSET, assetData]);
+    }
+    return bscript.compile(baseOutput);
   });
   lazy.prop(o, 'pubkey', () => {
     if (!a.output) return;

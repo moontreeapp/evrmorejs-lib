@@ -39,7 +39,7 @@
         "prettier": "prettier \"ts_src/**/*.ts\" \"test/**/*.ts\" --ignore-path ./.prettierignore",
         "prettierjs": "prettier \"src/**/*.js\" --ignore-path ./.prettierignore",
         "test": "npm run build && npm run format:ci && npm run lint && npm run nobuild:coverage",
-        "test:integration": "mocha --require ts-node/register test/integration/p2sh.psbt.spec.ts",
+        "test:integration": "mocha --require ts-node/register test/integration/psbt.spec.ts",
         "unit": "npm run build && npm run nobuild:unit"
     },
     "repository": {

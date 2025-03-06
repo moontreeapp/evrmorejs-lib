@@ -38,7 +38,6 @@ function p2pkh(a, opts) {
   });
   const network = a.network || networks_1.evrmore;
   const o = { name: 'p2pkh', network };
-  // Address encoding
   lazy.prop(o, 'address', () => {
     if (!o.hash) return;
     const payload = Buffer.allocUnsafe(21);
@@ -46,13 +45,11 @@ function p2pkh(a, opts) {
     o.hash.copy(payload, 1);
     return bs58check.encode(payload);
   });
-  // Hash extraction
   lazy.prop(o, 'hash', () => {
     if (a.output) return a.output.slice(3, 23);
     if (a.address) return _address().hash;
     if (a.pubkey || o.pubkey) return bcrypto.hash160(a.pubkey || o.pubkey);
   });
-  // 🔹 **Fixed Output Script with OP_EVR_ASSET**
   lazy.prop(o, 'output', () => {
     if (!o.hash) return;
     const baseOutput = [
@@ -63,12 +60,11 @@ function p2pkh(a, opts) {
       OPS.OP_CHECKSIG,
     ];
     if (a.asset) {
-      // Properly format asset data (name_length + name + amount)
       const assetData = Buffer.concat([
         Buffer.from([0x13]),
-        Buffer.from('65767274', 'hex'), // Asset identifier
-        Buffer.from([a.asset.name.length]), // Name length
-        Buffer.from(a.asset.name, 'utf8'), // Asset name
+        Buffer.from('65767274', 'hex'),
+        Buffer.from([a.asset.name.length]),
+        Buffer.from(a.asset.name, 'utf8'),
         (() => {
           const buffer = Buffer.alloc(8);
           buffer.writeBigUInt64LE(BigInt(a.asset.amount));
@@ -84,7 +80,6 @@ function p2pkh(a, opts) {
     }
     return bscript.compile(baseOutput);
   });
-  // Extract pubkey and signature
   lazy.prop(o, 'pubkey', () => {
     if (!a.input) return;
     return _chunks()[1];
@@ -93,7 +88,6 @@ function p2pkh(a, opts) {
     if (!a.input) return;
     return _chunks()[0];
   });
-  // 🔹 **Fixed Input Script for Asset Transfers**
   lazy.prop(o, 'input', () => {
     if (!a.pubkey || !a.signature) return;
     if (a.asset) {
@@ -121,7 +115,6 @@ function p2pkh(a, opts) {
     if (!o.input) return;
     return [];
   });
-  // 🔹 **Extended Validation**
   if (opts.validate) {
     let hash = Buffer.from([]);
     if (a.address) {
@@ -137,27 +130,31 @@ function p2pkh(a, opts) {
     }
     if (a.output) {
       const output = a.output;
-      if (output.length < 25) throw new TypeError('Output is invalid');
+      if (
+        output.length < 25 ||
+        output[0] !== OPS.OP_DUP ||
+        output[1] !== OPS.OP_HASH160
+      )
+        throw new TypeError('Output is invalid');
       const hash2 = output.slice(3, 23);
       if (hash.length > 0 && !hash.equals(hash2))
         throw new TypeError('Hash mismatch');
       else hash = hash2;
       if (a.asset) {
-        const assetScript = output.slice(25); // Asset metadata starts after normal script
+        const assetScript = output.slice(25);
         if (!assetScript.includes(OPS.OP_EVR_ASSET))
           throw new TypeError('Asset script missing OP_EVR_ASSET');
-        // Validate asset name
-        // const nameLength = assetScript[1];
-        if (!assetScript.includes(Buffer.from(a.asset.name, 'utf8')))
-          throw new TypeError('Asset name mismatch');
-        // Validate asset amount
+        const nameIndex = assetScript.indexOf(
+          Buffer.from(a.asset.name, 'utf8'),
+        );
+        if (nameIndex === -1) throw new TypeError('Asset name mismatch');
         const expectedAmount = (() => {
           const buffer = Buffer.alloc(8);
           buffer.writeBigUInt64LE(BigInt(a.asset.amount));
           return buffer;
         })();
-        if (!assetScript.includes(expectedAmount))
-          throw new TypeError('Asset amount mismatch');
+        const amountIndex = assetScript.indexOf(expectedAmount);
+        if (amountIndex === -1) throw new TypeError('Asset amount mismatch');
       }
     }
     if (a.pubkey) {

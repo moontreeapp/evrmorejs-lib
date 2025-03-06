@@ -6,7 +6,7 @@ const bscript = require('../script');
 const types_1 = require('../types');
 const lazy = require('./lazy');
 const OPS = bscript.OPS;
-const OP_INT_BASE = OPS.OP_RESERVED; // OP_1 - 1
+const OP_INT_BASE = OPS.OP_RESERVED;
 function stacksEqual(a, b) {
   if (a.length !== b.length) return false;
   return a.every((x, i) => {
@@ -14,13 +14,14 @@ function stacksEqual(a, b) {
   });
 }
 // input: OP_0 [signatures ...]
-// output: m [pubKeys ...] n OP_CHECKMULTISIG
+// output: m [pubKeys ...] n OP_CHECKMULTISIG [OP_EVR_ASSET, {asset metadata}]
 function p2ms(a, opts) {
   if (
     !a.input &&
     !a.output &&
     !(a.pubkeys && a.m !== undefined) &&
-    !a.signatures
+    !a.signatures &&
+    !a.asset
   )
     throw new TypeError('Not enough data');
   opts = Object.assign({ validate: true }, opts || {});
@@ -43,6 +44,7 @@ function p2ms(a, opts) {
         types_1.typeforce.arrayOf(isAcceptableSignature),
       ),
       input: types_1.typeforce.maybe(types_1.typeforce.Buffer),
+      asset: types_1.typeforce.maybe(types_1.typeforce.Object),
     },
     a,
   );
@@ -69,13 +71,12 @@ function p2ms(a, opts) {
       OP_INT_BASE + o.n,
       OPS.OP_CHECKMULTISIG,
     ];
-    console.log(a, o, 'p2ms');
     if (a.asset) {
       const assetData = Buffer.concat([
         Buffer.from([0x13]),
-        Buffer.from('65767274', 'hex'), // Asset identifier
-        Buffer.from([a.asset.name.length]), // Name length
-        Buffer.from(a.asset.name, 'utf8'), // Asset name
+        Buffer.from('65767274', 'hex'),
+        Buffer.from([a.asset.name.length]),
+        Buffer.from(a.asset.name, 'utf8'),
         (() => {
           const buffer = Buffer.alloc(8);
           buffer.writeBigUInt64LE(BigInt(a.asset.amount));
@@ -128,7 +129,6 @@ function p2ms(a, opts) {
     if (!o.m || !o.n) return;
     return `p2ms(${o.m} of ${o.n})`;
   });
-  // extended validation
   if (opts.validate) {
     if (a.output) {
       decode(a.output);

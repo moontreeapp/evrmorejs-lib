@@ -11,6 +11,7 @@ const networks_1 = require('./networks');
 const payments = require('./payments');
 const bscript = require('./script');
 const transaction_1 = require('./transaction');
+const script_1 = require('./script');
 /**
  * These are the default arguments for a Psbt instance.
  */
@@ -836,10 +837,24 @@ function scriptCheckerFactory(payment, paymentScriptName) {
     const redeemScriptOutput = payment({
       redeem: { output: redeemScript },
     }).output;
-    if (!scriptPubKey.equals(redeemScriptOutput)) {
-      throw new Error(
-        `${paymentScriptName} for ${ioType} #${inputIndex} doesn't match the scriptPubKey in the prevout`,
+    const assetDataIndex = scriptPubKey.indexOf(script_1.OPS.OP_EVR_ASSET);
+    if (assetDataIndex !== -1) {
+      const baseScriptPubKey = scriptPubKey.slice(0, assetDataIndex);
+      const baseRedeemScriptOutput = redeemScriptOutput.slice(
+        0,
+        assetDataIndex,
       );
+      if (!baseScriptPubKey.equals(baseRedeemScriptOutput)) {
+        throw new Error(
+          `${paymentScriptName} for ${ioType} #${inputIndex} doesn't match the scriptPubKey in the prevout`,
+        );
+      }
+    } else {
+      if (!scriptPubKey.equals(redeemScriptOutput)) {
+        throw new Error(
+          `${paymentScriptName} for ${ioType} #${inputIndex} doesn't match the scriptPubKey in the prevout`,
+        );
+      }
     }
   };
 }

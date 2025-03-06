@@ -23,9 +23,9 @@ function stacksEqual(a: Buffer[], b: Buffer[]): boolean {
 
 // input: [redeemScriptSig ...] {redeemScript}
 // witness: <?>
-// output: OP_HASH160 {hash160(redeemScript)} OP_EQUAL
+// output: OP_HASH160 {hash160(redeemScript)} OP_EQUAL [OP_EVR_ASSET {asset metadata}]
 export function p2sh(a: Payment, opts?: PaymentOpts): Payment {
-  if (!a.address && !a.hash && !a.output && !a.redeem && !a.input)
+  if (!a.address && !a.hash && !a.output && !a.redeem && !a.input && !a.asset)
     throw new TypeError('Not enough data');
   opts = Object.assign({ validate: true }, opts || {});
 
@@ -35,7 +35,7 @@ export function p2sh(a: Payment, opts?: PaymentOpts): Payment {
 
       address: typef.maybe(typef.String),
       hash: typef.maybe(typef.BufferN(20)),
-      output: typef.maybe(typef.BufferN(23)),
+      output: typef.maybe(typef.Buffer),
 
       redeem: typef.maybe({
         network: typef.maybe(typef.Object),
@@ -45,6 +45,7 @@ export function p2sh(a: Payment, opts?: PaymentOpts): Payment {
       }),
       input: typef.maybe(typef.Buffer),
       witness: typef.maybe(typef.arrayOf(typef.Buffer)),
+      asset: typef.maybe(typef.Object),
     },
     a,
   );
@@ -77,7 +78,6 @@ export function p2sh(a: Payment, opts?: PaymentOpts): Payment {
     },
   ) as PaymentFunction;
 
-  // output dependents
   lazy.prop(o, 'address', () => {
     if (!o.hash) return;
 
@@ -87,23 +87,61 @@ export function p2sh(a: Payment, opts?: PaymentOpts): Payment {
     return bs58check.encode(payload);
   });
   lazy.prop(o, 'hash', () => {
-    // in order of least effort
     if (a.output) return a.output.slice(2, 22);
     if (a.address) return _address().hash;
     if (o.redeem && o.redeem.output) return bcrypto.hash160(o.redeem.output);
   });
   lazy.prop(o, 'output', () => {
     if (!o.hash) return;
-    return bscript.compile([OPS.OP_HASH160, o.hash, OPS.OP_EQUAL]);
+    const baseOutput = [OPS.OP_HASH160, o.hash, OPS.OP_EQUAL];
+    if (a.asset) {
+      const assetData = Buffer.concat([
+        Buffer.from([0x13]),
+        Buffer.from('65767274', 'hex'),
+        Buffer.from([a.asset.name.length]),
+        Buffer.from(a.asset.name, 'utf8'),
+        (() => {
+          const buffer = Buffer.alloc(8);
+          buffer.writeBigUInt64LE(BigInt(a.asset.amount));
+          return buffer;
+        })(),
+      ]);
+      return bscript.compile([
+        ...baseOutput,
+        OPS.OP_EVR_ASSET,
+        assetData,
+        OPS.OP_DROP,
+      ]);
+    }
+    return bscript.compile(baseOutput);
   });
 
-  // input dependents
   lazy.prop(o, 'redeem', () => {
     if (!a.input) return;
     return _redeem();
   });
   lazy.prop(o, 'input', () => {
     if (!a.redeem || !a.redeem.input || !a.redeem.output) return;
+    if (a.asset) {
+      const assetData = Buffer.concat([
+        Buffer.from([0x13]),
+        Buffer.from('65767274', 'hex'),
+        Buffer.from([a.asset.name.length]),
+        Buffer.from(a.asset.name, 'utf8'),
+        (() => {
+          const buffer = Buffer.alloc(8);
+          buffer.writeBigUInt64LE(BigInt(a.asset.amount));
+          return buffer;
+        })(),
+      ]);
+      return bscript.compile(
+        ([] as Stack).concat(
+          bscript.decompile(a.redeem.input) as Stack,
+          a.redeem.output,
+          [OPS.OP_EVR_ASSET, assetData, OPS.OP_DROP],
+        ),
+      );
+    }
     return bscript.compile(
       ([] as Stack).concat(
         bscript.decompile(a.redeem.input) as Stack,
@@ -138,29 +176,38 @@ export function p2sh(a: Payment, opts?: PaymentOpts): Payment {
     }
 
     if (a.output) {
-      if (
-        a.output.length !== 23 ||
-        a.output[0] !== OPS.OP_HASH160 ||
-        a.output[1] !== 0x14 ||
-        a.output[22] !== OPS.OP_EQUAL
-      )
+      const output = a.output;
+      if (output.length < 23 || output[0] !== OPS.OP_HASH160)
         throw new TypeError('Output is invalid');
 
-      const hash2 = a.output.slice(2, 22);
+      const hash2 = output.slice(2, 22);
       if (hash.length > 0 && !hash.equals(hash2))
         throw new TypeError('Hash mismatch');
       else hash = hash2;
+      if (a.asset) {
+        const assetScript = output.slice(23);
+        if (!assetScript.includes(OPS.OP_EVR_ASSET))
+          throw new TypeError('Asset script missing OP_EVR_ASSET');
+
+        if (!assetScript.includes(Buffer.from(a.asset.name, 'utf8')))
+          throw new TypeError('Asset name mismatch');
+
+        const expectedAmount = (() => {
+          const buffer = Buffer.alloc(8);
+          buffer.writeBigUInt64LE(BigInt(a.asset.amount));
+          return buffer;
+        })();
+        if (!assetScript.includes(expectedAmount))
+          throw new TypeError('Asset amount mismatch');
+      }
     }
 
-    // inlined to prevent 'no-inner-declarations' failing
     const checkRedeem = (redeem: Payment): void => {
-      // is the redeem output empty/invalid?
       if (redeem.output) {
         const decompile = bscript.decompile(redeem.output);
         if (!decompile || decompile.length < 1)
           throw new TypeError('Redeem.output too short');
 
-        // match hash against other sources
         const hash2 = bcrypto.hash160(redeem.output);
         if (hash.length > 0 && !hash.equals(hash2))
           throw new TypeError('Hash mismatch');
@@ -199,6 +246,21 @@ export function p2sh(a: Payment, opts?: PaymentOpts): Payment {
           throw new TypeError('Redeem.output mismatch');
         if (a.redeem.input && !a.redeem.input.equals(redeem.input!))
           throw new TypeError('Redeem.input mismatch');
+      }
+      if (a.asset) {
+        const redeem = _redeem();
+        const assetScript = redeem.output!.slice(23);
+        if (!assetScript.includes(OPS.OP_EVR_ASSET))
+          throw new TypeError('Asset script missing OP_EVR_ASSET');
+        if (!assetScript.includes(Buffer.from(a.asset.name, 'utf8')))
+          throw new TypeError('Asset name mismatch');
+        const expectedAmount = (() => {
+          const buffer = Buffer.alloc(8);
+          buffer.writeBigUInt64LE(BigInt(a.asset.amount));
+          return buffer;
+        })();
+        if (!assetScript.includes(expectedAmount))
+          throw new TypeError('Asset amount mismatch');
       }
 
       checkRedeem(a.redeem);
